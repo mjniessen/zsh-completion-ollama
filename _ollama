@@ -29,7 +29,6 @@
 # SOFTWARE.
 #
 
-# ollama {{{
 _ollama() {
 	local cmd cmds
 
@@ -58,9 +57,8 @@ _ollama() {
     fi
   fi
 }
-# }}}
 
-# ollama serve [flags] {{{
+# ollama serve [flags]
 #
 # Aliases:
 #   serve, start
@@ -78,9 +76,8 @@ _ollama_serve() {
 _ollama_start() {
   _ollama_serve
 }
-# }}}
 
-# ollama create MODEL [flags] {{{
+# ollama create MODEL [flags]
 #
 # Flags:
 #   -f, --file string       Name of the Modelfile (default "Modelfile")
@@ -117,9 +114,8 @@ _ollama_create() {
     esac
   fi
 }
-# }}}
 
-# ollama show MODEL [flags] {{{
+# ollama show MODEL [flags]
 #
 # MODEL:
 #   installed model
@@ -153,9 +149,8 @@ _ollama_show() {
     _describe -t ollama-models 'installed models' models
   fi
 }
-# }}}
 
-# ollama run MODEL [PROMPT] [flags] {{{
+# ollama run MODEL [PROMPT] [flags]
 #
 # Flags:
 #       --format string      Response format (e.g. json)
@@ -203,9 +198,8 @@ _ollama_run() {
     esac
   fi
 }
-# }}}
 
-#   ollama stop MODEL [flags] {{{
+#   ollama stop MODEL [flags]
 #
 # Flags:
 #   -h, --help   help for stop
@@ -236,7 +230,6 @@ _ollama_stop() {
     _arguments -s $flags
   fi
 }
-# }}}
 
 # TODO:
 #   ollama pull MODEL [flags]
@@ -248,11 +241,18 @@ _ollama_stop() {
 # MODEL: any string or list from internet source
 _ollama_pull() {
   if (( CURRENT == 2 )); then
-  # TODO: if actual word ends with ':', query for versions
-  # TODO: caching of list under some ollama related dotfiles
     local -a models
-    models=($(_ollama_internet_models))
-    _describe -t ollama-models 'available models' models
+    if compset -P '*[.:]'; then
+      models=($(_ollama_internet_model_versions "${words[2]}"))
+      _describe -t ollama-models 'model versions' models
+    else
+      if compset -S '[.:]*'; then
+        models=($(_ollama_internet_models))
+      else
+        models=($(_ollama_internet_models))
+      fi
+      _describe -t ollama-models 'available models' models
+    fi
   else
     shift words
     (( CURRENT-- ))
@@ -265,9 +265,8 @@ _ollama_pull() {
     _arguments -S -s $flags
   fi
 }
-# }}}
-
-#   ollama push MODEL [flags] {{{
+ 
+#   ollama push MODEL [flags]
 #
 # Flags:
 #   -h, --help       help for push
@@ -292,8 +291,6 @@ _ollama_push() {
     _describe -t ollama-models 'installed models' models
   fi
 }
-# }}}
-
 
 _ollama_list() {
   # Usage:
@@ -354,9 +351,8 @@ _ollama_rm() {
   fi
 }
 
+# ollama help [command] [flags]
 _ollama_help() {
-  # Usage:
-  #   ollama help [command] [flags]
   local -a flags
   flags=(
     '(-h --help)'{-h,--help}'[Help for help]'
@@ -367,21 +363,25 @@ _ollama_help() {
   _arguments -S -s $flags
 }
 
+
+# TODO: caching of list under some ollama related dotfiles
 _ollama_internet_models() {
   local query="$1"
-  curl --silent --connect-timeout 5 "https://ollama.com/library?q=${query}" | grep '<a href="/library/' | sed 's/.*library\///;s/\".*$//' | sort
+  curl --silent --connect-timeout 5 "https://ollama.com/library?q=${query}" \
+    | grep '<a href="/library/' \
+    | sed 's/.*library\///;s/\".*$//' \
+    | sort
 }
 
 _ollama_internet_model_versions() {
-  local model="$1"
-  curl --silent --connect-timeout 5 "https://ollama.com/library/${model}" | grep '<a href="/library/' | sed 's/.*library\///;s/\".*$//' | grep -E '(latest|[0-9]b)$'
+  local model="${1%%:*}"
+  curl --silent --connect-timeout 5 "https://ollama.com/library/${model}" \
+    | grep '<a href="/library/' \
+    | sed 's/.*library\///;s/\".*$//' \
+    | grep -E '(latest|[0-9]b)$' \
+    | sed 's/.*://'
 }
-
-#_systemd_service_running() {
-#  local service="$1"
-#  timeout 2 systemctl status --quiet --no-pager --no-warn --no-ask-password "$service" > /dev/null 2>&1
-#}
 
 _ollama "$@"
 
-# vim:ft=zsh ts=2 sw=2 sts=2 fdm=marker
+# vim:ft=zsh ts=2 sw=2 sts=2 fdm=syntax
