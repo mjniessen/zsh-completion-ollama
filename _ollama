@@ -30,7 +30,7 @@
 #
 
 _ollama() {
-	local cmd cmds
+  local cmd cmds
 
   # NOTE: fixed cmds array for simplicity, may be change in the future
   cmds=(serve start create show run stop pull push list ls ps cp rm help)
@@ -247,9 +247,9 @@ _ollama_pull() {
       _describe -t ollama-models 'model versions' models
     else
       if compset -S '[.:]*'; then
-        models=($(_ollama_internet_models))
+        models=($(_ollama_cached_fetch))
       else
-        models=($(_ollama_internet_models))
+        models=($(_ollama_cached_fetch))
       fi
       _describe -t ollama-models 'available models' models
     fi
@@ -363,8 +363,6 @@ _ollama_help() {
   _arguments -S -s $flags
 }
 
-
-# TODO: caching of list under some ollama related dotfiles
 _ollama_internet_models() {
   local query="$1"
   curl --silent --connect-timeout 5 "https://ollama.com/library?q=${query}" \
@@ -380,6 +378,26 @@ _ollama_internet_model_versions() {
     | sed 's/.*library\///;s/\".*$//' \
     | grep -E '(latest|[0-9]b)$' \
     | sed 's/.*://'
+}
+
+_ollama_cached_fetch() {
+  local query cache age max_age
+  query="$*"
+  cache=${OLLAMA_CACHE_PATH:-$HOME/.ollama/cache}
+  cache_folder=${cache%/*}
+  max_age=${OLLAMA_CACHE_MAXAGE:-21600}
+
+  # create configured folder for cache
+  [[ -w "$(dirname "${cache_folder}")" && ! -e "$cache" ]] && mkdir -p "$cache_folder"
+
+  # check age, if cache already exists
+  [[ -e "$cache" ]] && age=$(($(date +%s) - $(stat -c %Y "$cache")))
+  [[ -z "$age" ]] && ((age = max_age))
+  if ((max_age > age)); then
+    cat "$cache"
+  else
+    _ollama_internet_models "$query" | tee "$cache"
+  fi
 }
 
 _ollama "$@"
