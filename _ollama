@@ -374,7 +374,7 @@ _ollama_internet_models() {
 _ollama_internet_model_versions() {
   local model="${1%%:*}"
   curl --silent --connect-timeout 5 "https://ollama.com/library/${model}" \
-    | grep '<a href="/library/' \
+    | grep 'href="/library/' \
     | sed 's/.*library\///;s/\".*$//' \
     | grep -E '(latest|[0-9]b)$' \
     | sed 's/.*://'
